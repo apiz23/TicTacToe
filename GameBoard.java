@@ -397,11 +397,15 @@ public class GameBoard extends JPanel {
                 player1WinsLabel.setText(player1Name + ": " + player1Wins);
                 JOptionPane.showMessageDialog(this, player1Name + " Wins!", "Victory", JOptionPane.INFORMATION_MESSAGE);
 
-                // Save to database for Player 1
-                String hw = UserSession.getHardwareId();
-                if (player1Name != null && hw != null) {
-                    System.out.println("Saving win for: " + player1Name);
-                    DbCon.saveScore(player1Name, hw, 1);
+                // *** ONLY SAVE POINTS IN PvP MODE ***
+                if (gameMode.equals("PvP")) {
+                    String hw = UserSession.getHardwareId();
+                    if (player1Name != null && hw != null) {
+                        System.out.println("[PvP] Saving win for: " + player1Name);
+                        DbCon.saveScore(player1Name, hw, 1);
+                    }
+                } else {
+                    System.out.println("[Bot Mode] No points awarded for: " + player1Name);
                 }
 
             } else {
@@ -409,13 +413,15 @@ public class GameBoard extends JPanel {
                 player2WinsLabel.setText(player2Name + ": " + player2Wins);
                 JOptionPane.showMessageDialog(this, player2Name + " Wins!", "Victory", JOptionPane.INFORMATION_MESSAGE);
 
-                // Save to database for Player 2 (only if not Bot and not Guest)
+                // *** ONLY SAVE POINTS IN PvP MODE (Not Bot or Guest) ***
                 if (gameMode.equals("PvP") && !player2Name.equals("Guest")) {
                     String hw = UserSession.getHardwareId();
                     if (hw != null) {
-                        System.out.println("Saving win for: " + player2Name);
+                        System.out.println("[PvP] Saving win for: " + player2Name);
                         DbCon.saveScore(player2Name, hw, 1);
                     }
+                } else if (gameMode.equals("Bot")) {
+                    System.out.println("[Bot Mode] No points awarded for Bot");
                 }
             }
             resetBoard();

@@ -17,6 +17,7 @@ public class GameModeScreen extends JPanel {
     private JPanel pvpInputPanel; // To show Player 2 input for PvP
     private JTextField player2Field;
     private JLabel player1Label;
+    private JLabel validationLabel; // To show validation messages
 
     // Colors (Matching your theme)
     private final Color BG_COLOR = new Color(240, 240, 245);
@@ -82,12 +83,19 @@ public class GameModeScreen extends JPanel {
         pvpInputPanel.add(player2Field);
 
         // Info label
-        JLabel infoLabel = new JLabel("(Optional: Leave blank for Guest)");
+        JLabel infoLabel = new JLabel("(Player 2 must be registered)");
         infoLabel.setFont(new Font("SansSerif", Font.ITALIC, 12));
         infoLabel.setForeground(Color.GRAY);
         infoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         pvpInputPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         pvpInputPanel.add(infoLabel);
+
+        // Validation label (initially hidden)
+        validationLabel = new JLabel("");
+        validationLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        validationLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        pvpInputPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        pvpInputPanel.add(validationLabel);
 
         // Visible by default since PvP is default
         add(pvpInputPanel);
@@ -139,22 +147,55 @@ public class GameModeScreen extends JPanel {
             if (selectedMode.equals("PvP")) {
                 // Get Player 2 username
                 player2Username = player2Field.getText().trim();
+
+                // Validation: Check if empty
                 if (player2Username.isEmpty()) {
-                    player2Username = "Guest"; // Default if empty
+                    showValidationMessage("Please enter Player 2 username!", Color.RED);
+                    return;
                 }
 
                 // Validation: check if same username
                 if (player2Username.equalsIgnoreCase(player1Username)) {
-                    JOptionPane.showMessageDialog(this,
-                            "Player 2 must have a different username!",
-                            "Invalid Input",
-                            JOptionPane.WARNING_MESSAGE);
+                    showValidationMessage("Player 2 must have a different username!", Color.RED);
                     return;
                 }
-            }
 
-            // Pass settings to GameBoard
-            manager.showGameBoard(selectedMode, selectedDifficulty, player1Username, player2Username);
+                // Disable button and show loading message
+                startBtn.setEnabled(false);
+                showValidationMessage("Checking user...", new Color(255, 165, 0)); // Orange
+
+                // Validate Player 2 exists in database (in background thread)
+                new Thread(() -> {
+                    boolean exists = DbCon.userExists(player2Username);
+
+                    // Update UI on EDT
+                    SwingUtilities.invokeLater(() -> {
+                        startBtn.setEnabled(true);
+
+                        if (exists) {
+                            showValidationMessage("User found! Starting game...", new Color(34, 139, 34)); // Green
+
+                            // Small delay to show success message
+                            Timer timer = new Timer(500, evt -> {
+                                manager.showGameBoard(selectedMode, selectedDifficulty, player1Username, player2Username);
+                            });
+                            timer.setRepeats(false);
+                            timer.start();
+                        } else {
+                            showValidationMessage("Player 2 not found in database!", Color.RED);
+                            JOptionPane.showMessageDialog(this,
+                                    "Player 2 '" + player2Username + "' is not registered.\n" +
+                                            "They must create an account first.",
+                                    "User Not Found",
+                                    JOptionPane.ERROR_MESSAGE);
+                        }
+                    });
+                }).start();
+
+            } else {
+                // Bot mode - no validation needed
+                manager.showGameBoard(selectedMode, selectedDifficulty, player1Username, player2Username);
+            }
         });
 
         add(startBtn);
@@ -176,6 +217,9 @@ public class GameModeScreen extends JPanel {
         // Show/Hide panels based on mode
         pvpInputPanel.setVisible(mode.equals("PvP"));
         difficultyPanel.setVisible(mode.equals("Bot"));
+
+        // Clear validation message when switching modes
+        showValidationMessage("", Color.BLACK);
 
         revalidate();
         repaint();
@@ -212,5 +256,10 @@ public class GameModeScreen extends JPanel {
             btn.setBackground(INACTIVE_COLOR);
             btn.setForeground(Color.BLACK);
         }
+    }
+
+    private void showValidationMessage(String message, Color color) {
+        validationLabel.setText(message);
+        validationLabel.setForeground(color);
     }
 }

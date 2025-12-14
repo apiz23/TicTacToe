@@ -139,6 +139,36 @@ public class DbCon {
     }
 
     // =========================================================================
+    // 4. CHECK IF USER EXISTS (For Player 2 Validation)
+    // =========================================================================
+    public static boolean userExists(String player) {
+        try {
+            // Encode parameter for URL safety
+            String encName = URLEncoder.encode(player, StandardCharsets.UTF_8);
+
+            // Query: Check if any row exists with this player name
+            String queryUrl = BASE_URL + "?player=eq." + encName + "&select=player";
+
+            HttpRequest getRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(queryUrl))
+                    .header("apikey", API_KEY)
+                    .header("Authorization", "Bearer " + API_KEY)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(getRequest, HttpResponse.BodyHandlers.ofString());
+            String body = response.body();
+
+            // If response is empty array "[]", user doesn't exist
+            return !body.equals("[]") && body.length() >= 3;
+
+        } catch (Exception e) {
+            System.err.println("User check error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
     // HELPER METHODS (JSON Parsing)
     // =========================================================================
 
