@@ -1,102 +1,114 @@
 package tictactoe.logic;
 
 public class GameLogic {
+    private String[] board;
+    private boolean isXTurn;
+    private int boardSize;
 
-    private final String[] board = new String[9];
-    private boolean xTurn = true;
-
-    public GameLogic() {
-        reset();
+    public GameLogic(int boardSize) {
+        this.boardSize = boardSize;
+        this.board = new String[boardSize * boardSize];
+        this.isXTurn = true;
+        initializeBoard();
     }
 
-    /* ---------------------- TURN CONTROL ---------------------- */
-
-    public boolean isXTurn() {
-        return xTurn;
-    }
-
-    public void switchTurn() {
-        xTurn = !xTurn;
-    }
-
-    /* ---------------------- BOARD CONTROL ---------------------- */
-
-    public String[] getBoard() {
-        return board;
-    }
-
-    public boolean isCellEmpty(int index) {
-        return board[index].isEmpty();
-    }
-
-    public void setCell(int index, String symbol) {
-        board[index] = symbol;
+    private void initializeBoard() {
+        for (int i = 0; i < board.length; i++) {
+            board[i] = "";
+        }
     }
 
     public boolean makeMove(int index) {
-        if (!isCellEmpty(index)) return false;
-
-        board[index] = xTurn ? "X" : "O";
+        if (index < 0 || index >= board.length || !board[index].isEmpty()) {
+            return false;
+        }
+        board[index] = isXTurn ? "X" : "O";
         return true;
     }
 
-    public void undoMove(int index) {
-        board[index] = "";
+    public void switchTurn() {
+        isXTurn = !isXTurn;
     }
 
-    /* ------------------------- GAME CHECKS ------------------------- */
+    public boolean isXTurn() {
+        return isXTurn;
+    }
 
     public boolean checkWinner() {
-        int[][] wins = {
-                {0,1,2}, {3,4,5}, {6,7,8},
-                {0,3,6}, {1,4,7}, {2,5,8},
-                {0,4,8}, {2,4,6}
-        };
+        // Check all rows
+        for (int row = 0; row < boardSize; row++) {
+            boolean rowWin = true;
+            String first = board[row * boardSize];
+            if (first.isEmpty()) continue;
 
-        for (int[] w : wins) {
-            String a = board[w[0]];
-            String b = board[w[1]];
-            String c = board[w[2]];
-
-            if (!a.isEmpty() && a.equals(b) && b.equals(c)) {
-                return true;
+            for (int col = 1; col < boardSize; col++) {
+                if (!board[row * boardSize + col].equals(first)) {
+                    rowWin = false;
+                    break;
+                }
             }
+            if (rowWin) return true;
         }
+
+        // Check all columns
+        for (int col = 0; col < boardSize; col++) {
+            boolean colWin = true;
+            String first = board[col];
+            if (first.isEmpty()) continue;
+
+            for (int row = 1; row < boardSize; row++) {
+                if (!board[row * boardSize + col].equals(first)) {
+                    colWin = false;
+                    break;
+                }
+            }
+            if (colWin) return true;
+        }
+
+        // Check main diagonal (top-left to bottom-right)
+        boolean diagWin1 = true;
+        String first1 = board[0];
+        if (!first1.isEmpty()) {
+            for (int i = 1; i < boardSize; i++) {
+                if (!board[i * boardSize + i].equals(first1)) {
+                    diagWin1 = false;
+                    break;
+                }
+            }
+            if (diagWin1) return true;
+        }
+
+        // Check anti-diagonal (top-right to bottom-left)
+        boolean diagWin2 = true;
+        String first2 = board[boardSize - 1];
+        if (!first2.isEmpty()) {
+            for (int i = 1; i < boardSize; i++) {
+                if (!board[i * boardSize + (boardSize - 1 - i)].equals(first2)) {
+                    diagWin2 = false;
+                    break;
+                }
+            }
+            if (diagWin2) return true;
+        }
+
         return false;
-    }
-
-    public String getWinnerSymbol() {
-        int[][] wins = {
-                {0,1,2}, {3,4,5}, {6,7,8},
-                {0,3,6}, {1,4,7}, {2,5,8},
-                {0,4,8}, {2,4,6}
-        };
-
-        for (int[] w : wins) {
-            String a = board[w[0]];
-            String b = board[w[1]];
-            String c = board[w[2]];
-
-            if (!a.isEmpty() && a.equals(b) && b.equals(c)) {
-                return a;
-            }
-        }
-        return "";
     }
 
     public boolean isDraw() {
         for (String cell : board) {
-            if (cell.isEmpty()) return false;
+            if (cell.isEmpty()) {
+                return false;
+            }
         }
-        return true;
+        return !checkWinner();
     }
 
-    /* ------------------------- RESET ------------------------- */
-
     public void reset() {
-        for (int i = 0; i < 9; i++) {
-            board[i] = "";
-        }
-        xTurn = true;
+        initializeBoard();
+        isXTurn = true;
+    }
+
+    public int getBoardSize() {
+        return boardSize;
     }
 }

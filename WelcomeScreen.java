@@ -23,22 +23,28 @@ public class WelcomeScreen extends JPanel {
 
         JPanel contentPanel = new JPanel(new GridLayout(0, 1, 20, 20));
         contentPanel.setOpaque(false);
-        contentPanel.setPreferredSize(new Dimension(350, 320)); // Increased height for extra button
+        contentPanel.setPreferredSize(new Dimension(350, 400)); // Increased for Settings button
 
         // ==========================
         // BUTTONS
         // ==========================
 
-        JButton startGameBtn = createStyledButton("Start Game");
+        JButton startGameBtn = createStyledButton("🎮 Start Game");
         startGameBtn.addActionListener(e -> manager.showGameModeScreen());
         contentPanel.add(startGameBtn);
 
-        JButton scoreboardBtn = createStyledButton("Scoreboard");
+        JButton scoreboardBtn = createStyledButton("🏆 Scoreboard");
         scoreboardBtn.addActionListener(e -> manager.showScoreboardScreen());
         contentPanel.add(scoreboardBtn);
 
-        // NEW: Logout Button
-        JButton logoutBtn = createStyledButton("Logout");
+        // NEW: Settings Button
+        JButton settingsBtn = createStyledButton("⚙️ Settings");
+        settingsBtn.setBackground(new Color(108, 117, 125)); // Gray color for settings
+        settingsBtn.addActionListener(e -> manager.showSettingsScreen());
+        contentPanel.add(settingsBtn);
+
+        // Logout Button
+        JButton logoutBtn = createStyledButton("🚪 Logout");
         logoutBtn.setBackground(new Color(220, 53, 69)); // Red color for logout
         logoutBtn.addActionListener(e -> {
             UserSession.logout();
@@ -46,7 +52,8 @@ public class WelcomeScreen extends JPanel {
         });
         contentPanel.add(logoutBtn);
 
-        JButton exitBtn = createStyledButton("Exit Desktop");
+        JButton exitBtn = createStyledButton("❌ Exit");
+        exitBtn.setBackground(new Color(108, 117, 125)); // Dark gray
         exitBtn.addActionListener(e -> System.exit(0));
         contentPanel.add(exitBtn);
 
@@ -65,6 +72,7 @@ public class WelcomeScreen extends JPanel {
         btn.setFocusPainted(false);
         btn.setBackground(new Color(70, 130, 180));
         btn.setForeground(Color.WHITE);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return btn;
     }
 }
