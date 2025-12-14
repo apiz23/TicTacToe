@@ -13,6 +13,16 @@ public class ScreenManager {
         this.cardLayout = new CardLayout();
         this.mainPanel = new JPanel(cardLayout);
         frame.add(mainPanel);
+
+        UserSession.logout();
+
+        showLoginScreen();
+    }
+
+    public void showLoginScreen() {
+        LoginScreen login = new LoginScreen(this);
+        mainPanel.add(login, "LOGIN");
+        cardLayout.show(mainPanel, "LOGIN");
     }
 
     public void showWelcomeScreen() {
@@ -21,16 +31,19 @@ public class ScreenManager {
         cardLayout.show(mainPanel, "WELCOME");
     }
 
-    // NEW: Show the setup screen
     public void showGameModeScreen() {
-        GameModeScreen modeScreen = new GameModeScreen(this);
+        // Pass the logged-in username to GameModeScreen
+        String username = UserSession.getUsername();
+        if (username == null) username = "Guest";
+
+        GameModeScreen modeScreen = new GameModeScreen(this, username);
         mainPanel.add(modeScreen, "MODE_SELECT");
         cardLayout.show(mainPanel, "MODE_SELECT");
     }
 
-    // UPDATED: Now accepts settings
-    public void showGameBoard(String mode, String difficulty) {
-        GameBoard game = new GameBoard(this, mode, difficulty);
+    // Updated to accept 4 parameters
+    public void showGameBoard(String mode, String difficulty, String player1, String player2) {
+        GameBoard game = new GameBoard(this, mode, difficulty, player1, player2);
         mainPanel.add(game, "GAME");
         cardLayout.show(mainPanel, "GAME");
     }

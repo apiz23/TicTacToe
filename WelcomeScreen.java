@@ -9,8 +9,11 @@ public class WelcomeScreen extends JPanel {
         setLayout(new BorderLayout());
         setBackground(new Color(240, 240, 245));
 
-        JLabel title = new JLabel("TIC TAC TOE", SwingConstants.CENTER);
-        title.setFont(new Font("SansSerif", Font.BOLD, 48));
+        // --- 1. Dynamic Title (Uses UserSession) ---
+        String playerName = UserSession.isLoggedIn() ? UserSession.getUsername() : "Player";
+        JLabel title = new JLabel("Welcome, " + playerName, SwingConstants.CENTER);
+
+        title.setFont(new Font("SansSerif", Font.BOLD, 40));
         title.setForeground(new Color(50, 50, 50));
         title.setBorder(BorderFactory.createEmptyBorder(80, 0, 50, 0));
         add(title, BorderLayout.NORTH);
@@ -20,7 +23,7 @@ public class WelcomeScreen extends JPanel {
 
         JPanel contentPanel = new JPanel(new GridLayout(0, 1, 20, 20));
         contentPanel.setOpaque(false);
-        contentPanel.setPreferredSize(new Dimension(350, 250));
+        contentPanel.setPreferredSize(new Dimension(350, 320)); // Increased height for extra button
 
         // ==========================
         // BUTTONS
@@ -34,7 +37,16 @@ public class WelcomeScreen extends JPanel {
         scoreboardBtn.addActionListener(e -> manager.showScoreboardScreen());
         contentPanel.add(scoreboardBtn);
 
-        JButton exitBtn = createStyledButton("Exit");
+        // NEW: Logout Button
+        JButton logoutBtn = createStyledButton("Logout");
+        logoutBtn.setBackground(new Color(220, 53, 69)); // Red color for logout
+        logoutBtn.addActionListener(e -> {
+            UserSession.logout();
+            manager.showLoginScreen();
+        });
+        contentPanel.add(logoutBtn);
+
+        JButton exitBtn = createStyledButton("Exit Desktop");
         exitBtn.addActionListener(e -> System.exit(0));
         contentPanel.add(exitBtn);
 
@@ -42,7 +54,7 @@ public class WelcomeScreen extends JPanel {
         add(centerWrapper, BorderLayout.CENTER);
 
         JPanel footer = new JPanel();
-        footer.setPreferredSize(new Dimension(0, 100));
+        footer.setPreferredSize(new Dimension(0, 50));
         footer.setOpaque(false);
         add(footer, BorderLayout.SOUTH);
     }

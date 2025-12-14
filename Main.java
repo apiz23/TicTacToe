@@ -11,7 +11,6 @@ public class Main {
             frame.setLocationRelativeTo(null);
 
             ScreenManager manager = new ScreenManager(frame);
-            manager.showWelcomeScreen();
 
             frame.setVisible(true);
         });

@@ -14,15 +14,18 @@ public class GameBoard extends JPanel {
     private final GameLogic logic = new GameLogic();
 
     private JLabel timerLabel;
-    private JLabel humanWinsLabel;
-    private JLabel botWinsLabel;
+    private JLabel player1WinsLabel;
+    private JLabel player2WinsLabel;
+    private JLabel turnLabel;
 
     private int spotsTaken = 0;
-    private int humanWins = 0;
-    private int botWins = 0;
+    private int player1Wins = 0;
+    private int player2Wins = 0;
 
     private String gameMode;   // "PvP" or "Bot"
     private String difficulty; // "Easy", "Medium", "Hard"
+    private String player1Name; // Logged in user
+    private String player2Name; // Second player or "Bot"
 
     private final Color BG_COLOR = new Color(240, 240, 245);
     private final Color ACCENT_BLUE = new Color(70, 130, 180);
@@ -30,9 +33,11 @@ public class GameBoard extends JPanel {
     private final Color O_COLOR = new Color(239, 68, 68);
     private final Dimension BOARD_SIZE = new Dimension(450, 450);
 
-    public GameBoard(ScreenManager manager, String mode, String difficulty) {
+    public GameBoard(ScreenManager manager, String mode, String difficulty, String player1, String player2) {
         this.gameMode = mode;
         this.difficulty = difficulty;
+        this.player1Name = player1;
+        this.player2Name = mode.equals("Bot") ? "Bot" : player2;
 
         setLayout(new BorderLayout());
         setBackground(BG_COLOR);
@@ -42,6 +47,7 @@ public class GameBoard extends JPanel {
         add(createBottomPanel(manager), BorderLayout.SOUTH);
 
         System.out.println("Started Game: " + mode + " (" + difficulty + ")");
+        System.out.println("Player 1: " + player1Name + " | Player 2: " + player2Name);
     }
 
     /* ---------------------- TOP PANEL ---------------------- */
@@ -52,11 +58,11 @@ public class GameBoard extends JPanel {
         topPanel.setBackground(BG_COLOR);
         topPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
 
-        JLabel title = new JLabel("Your Turn");
-        title.setFont(new Font("SansSerif", Font.BOLD, 32));
-        title.setForeground(new Color(50, 50, 50));
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        topPanel.add(title);
+        turnLabel = new JLabel(player1Name + "'s Turn (X)");
+        turnLabel.setFont(new Font("SansSerif", Font.BOLD, 32));
+        turnLabel.setForeground(new Color(50, 50, 50));
+        turnLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        topPanel.add(turnLabel);
 
         topPanel.add(Box.createRigidArea(new Dimension(0, 15)));
 
@@ -64,8 +70,10 @@ public class GameBoard extends JPanel {
         statsPanel.setBackground(BG_COLOR);
 
         timerLabel = addStat(statsPanel, "src/tictactoe/img/timer.png", "0");
-        humanWinsLabel = addStat(statsPanel, "src/tictactoe/img/profile.png", "0");
-        botWinsLabel = addStat(statsPanel, "src/tictactoe/img/bot.png", "0");
+        player1WinsLabel = addStat(statsPanel, "src/tictactoe/img/profile.png", player1Name + ": 0");
+
+        String icon2 = gameMode.equals("Bot") ? "src/tictactoe/img/bot.png" : "src/tictactoe/img/profile.png";
+        player2WinsLabel = addStat(statsPanel, icon2, player2Name + ": 0");
 
         topPanel.add(statsPanel);
         return topPanel;
@@ -78,7 +86,7 @@ public class GameBoard extends JPanel {
         JLabel iconLabel = new JLabel();
         iconLabel.setIcon(loadIcon(iconPath, 24, 24));
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
+        valueLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
         valueLabel.setForeground(Color.DARK_GRAY);
 
         statPanel.add(iconLabel);
@@ -102,7 +110,7 @@ public class GameBoard extends JPanel {
         for (int i = 0; i < 9; i++) {
             JButton btn = createBoardCell();
             int index = i;
-            btn.addActionListener(e -> handleHumanMove(index));
+            btn.addActionListener(e -> handlePlayerMove(index));
             cells[index] = btn;
             boardPanel.add(btn);
         }
@@ -172,13 +180,24 @@ public class GameBoard extends JPanel {
 
     /* ------------------------------ GAME LOGIC ------------------------------ */
 
-    private void handleHumanMove(int index) {
+    private void handlePlayerMove(int index) {
         if (!cells[index].getText().isEmpty()) return;
 
-        performMove(index);
-        if (checkGameOver("You")) return;
+        // Determine current player
+        String currentPlayer = logic.isXTurn() ? player1Name : player2Name;
 
-        if ("Bot".equals(gameMode)) {
+        performMove(index);
+
+        // Check if current player won
+        if (checkGameOver(currentPlayer)) return;
+
+        // Update turn label
+        String nextPlayer = logic.isXTurn() ? player1Name : player2Name;
+        String nextSymbol = logic.isXTurn() ? "X" : "O";
+        turnLabel.setText(nextPlayer + "'s Turn (" + nextSymbol + ")");
+
+        // If Bot mode and it's bot's turn
+        if ("Bot".equals(gameMode) && !logic.isXTurn()) {
             SwingUtilities.invokeLater(() -> handleBotMove());
         }
     }
@@ -197,30 +216,36 @@ public class GameBoard extends JPanel {
 
         if (botIndex != -1) {
             performMove(botIndex);
-            checkGameOver("Opponent");
+            checkGameOver(player2Name); // Bot is player2
+
+            // Update turn label back to player1
+            String nextSymbol = logic.isXTurn() ? "X" : "O";
+            turnLabel.setText(player1Name + "'s Turn (" + nextSymbol + ")");
         }
     }
 
     /* ---------------------- AI DIFFICULTY LEVELS ---------------------- */
 
-    // EASY: Random moves
     private int easyBot() {
         Random rand = new Random();
         int botIndex;
+        if (spotsTaken >= 9) return -1;
+
         do {
             botIndex = rand.nextInt(9);
         } while (!cells[botIndex].getText().isEmpty());
         return botIndex;
     }
 
-    // MEDIUM: Block player wins, take winning moves, otherwise random
     private int mediumBot() {
+        if (spotsTaken >= 9) return -1;
+
+        String symbol = logic.isXTurn() ? "X" : "O";
+
         // 1. Check if bot can win
         for (int i = 0; i < 9; i++) {
             if (cells[i].getText().isEmpty()) {
-                String currentSymbol = logic.isXTurn() ? "X" : "O";
-                cells[i].setText(currentSymbol);
-
+                cells[i].setText(symbol);
                 if (checkWinningMove()) {
                     cells[i].setText("");
                     return i;
@@ -229,12 +254,11 @@ public class GameBoard extends JPanel {
             }
         }
 
-        // 2. Check if need to block player
+        // 2. Block player
         String opponentSymbol = logic.isXTurn() ? "O" : "X";
         for (int i = 0; i < 9; i++) {
             if (cells[i].getText().isEmpty()) {
                 cells[i].setText(opponentSymbol);
-
                 if (checkWinningMove()) {
                     cells[i].setText("");
                     return i;
@@ -243,16 +267,14 @@ public class GameBoard extends JPanel {
             }
         }
 
-        // 3. Otherwise, random move
         return easyBot();
     }
 
-    // Helper method to check if current board state has a winner
     private boolean checkWinningMove() {
         int[][] wins = {
-                {0,1,2}, {3,4,5}, {6,7,8}, // rows
-                {0,3,6}, {1,4,7}, {2,5,8}, // cols
-                {0,4,8}, {2,4,6}           // diagonals
+                {0,1,2}, {3,4,5}, {6,7,8},
+                {0,3,6}, {1,4,7}, {2,5,8},
+                {0,4,8}, {2,4,6}
         };
 
         for (int[] w : wins) {
@@ -266,8 +288,9 @@ public class GameBoard extends JPanel {
         return false;
     }
 
-    // HARD: Minimax algorithm (unbeatable)
     private int hardBot() {
+        if (spotsTaken >= 9) return -1;
+
         int bestScore = Integer.MIN_VALUE;
         int bestMove = -1;
 
@@ -286,24 +309,19 @@ public class GameBoard extends JPanel {
             }
         }
 
+        if (bestMove == -1) return easyBot();
         return bestMove;
     }
 
     private int minimax(boolean isMaximizing, String botSymbol) {
         String playerSymbol = botSymbol.equals("X") ? "O" : "X";
 
-        // Check terminal states
         if (checkWinningMove()) {
-            // Determine who won by checking whose symbol made the winning line
             String winner = getWinner();
-            if (winner.equals(botSymbol)) {
-                return 10; // Bot wins
-            } else {
-                return -10; // Player wins
-            }
+            if (winner.equals(botSymbol)) return 10;
+            else if (winner.equals(playerSymbol)) return -10;
         }
 
-        // Check for draw
         boolean boardFull = true;
         for (int i = 0; i < 9; i++) {
             if (cells[i].getText().isEmpty()) {
@@ -362,6 +380,7 @@ public class GameBoard extends JPanel {
         if (!logic.makeMove(index)) return;
 
         String symbol = logic.isXTurn() ? "O" : "X";
+
         cells[index].setText(symbol);
         cells[index].setForeground(symbol.equals("X") ? X_COLOR : O_COLOR);
         timerLabel.setText(String.valueOf(++spotsTaken));
@@ -371,14 +390,33 @@ public class GameBoard extends JPanel {
 
     private boolean checkGameOver(String lastPlayerName) {
         if (logic.checkWinner()) {
-            boolean humanWon = lastPlayerName.equals("You");
+            boolean isPlayer1 = lastPlayerName.equals(player1Name);
 
-            if (humanWon) {
-                humanWinsLabel.setText(String.valueOf(++humanWins));
-                JOptionPane.showMessageDialog(this, "You Win!", "Victory", JOptionPane.INFORMATION_MESSAGE);
+            if (isPlayer1) {
+                player1Wins++;
+                player1WinsLabel.setText(player1Name + ": " + player1Wins);
+                JOptionPane.showMessageDialog(this, player1Name + " Wins!", "Victory", JOptionPane.INFORMATION_MESSAGE);
+
+                // Save to database for Player 1
+                String hw = UserSession.getHardwareId();
+                if (player1Name != null && hw != null) {
+                    System.out.println("Saving win for: " + player1Name);
+                    DbCon.saveScore(player1Name, hw, 1);
+                }
+
             } else {
-                botWinsLabel.setText(String.valueOf(++botWins));
-                JOptionPane.showMessageDialog(this, lastPlayerName + " Wins!", "Defeat", JOptionPane.INFORMATION_MESSAGE);
+                player2Wins++;
+                player2WinsLabel.setText(player2Name + ": " + player2Wins);
+                JOptionPane.showMessageDialog(this, player2Name + " Wins!", "Victory", JOptionPane.INFORMATION_MESSAGE);
+
+                // Save to database for Player 2 (only if not Bot and not Guest)
+                if (gameMode.equals("PvP") && !player2Name.equals("Guest")) {
+                    String hw = UserSession.getHardwareId();
+                    if (hw != null) {
+                        System.out.println("Saving win for: " + player2Name);
+                        DbCon.saveScore(player2Name, hw, 1);
+                    }
+                }
             }
             resetBoard();
             return true;
@@ -396,6 +434,8 @@ public class GameBoard extends JPanel {
         logic.reset();
         spotsTaken = 0;
         timerLabel.setText("0");
+
+        turnLabel.setText(player1Name + "'s Turn (X)");
 
         for (JButton btn : cells) {
             btn.setText("");
