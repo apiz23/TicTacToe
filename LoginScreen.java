@@ -55,23 +55,37 @@ public class LoginScreen extends JPanel {
 
         loginBtn.addActionListener(e -> {
             String rawName = nameField.getText().trim();
-            if (!rawName.isEmpty()) {
-                loginBtn.setEnabled(false);
-                loginBtn.setText("Checking ID...");
 
-                String deviceName = getDeviceName();
-
-                // Store both in session
-                UserSession.login(rawName, deviceName);
-
-                // Register in DB
-                new Thread(() -> {
-                    DbCon.loginOrRegister(rawName, deviceName);
-                    SwingUtilities.invokeLater(() -> manager.showWelcomeScreen());
-                }).start();
-            } else {
+            if (rawName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please enter a valid name.");
+                return;
             }
+
+            loginBtn.setEnabled(false);
+            loginBtn.setText("Checking ID...");
+
+            String deviceName = getDeviceName();
+
+            new Thread(() -> {
+                boolean success = DbCon.loginOrRegister(rawName, deviceName);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (success) {
+                        UserSession.login(rawName, deviceName);
+                        manager.showWelcomeScreen();
+                    } else {
+                        loginBtn.setEnabled(true);
+                        loginBtn.setText("Enter Game");
+
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Player name already taken.\nPlease choose another name.",
+                                "Name Exists",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                    }
+                });
+            }).start();
         });
 
         contentPanel.add(loginBtn);

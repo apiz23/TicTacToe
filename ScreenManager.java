@@ -32,7 +32,6 @@ public class ScreenManager {
     }
 
     public void showGameModeScreen() {
-        // Pass the logged-in username to GameModeScreen
         String username = UserSession.getUsername();
         if (username == null) username = "Guest";
 
@@ -41,14 +40,12 @@ public class ScreenManager {
         cardLayout.show(mainPanel, "MODE_SELECT");
     }
 
-    // Updated to accept 5 parameters (added boardSize)
     public void showGameBoard(String mode, String difficulty, String player1, String player2, int boardSize) {
         GameBoard game = new GameBoard(this, mode, difficulty, player1, player2, boardSize);
         mainPanel.add(game, "GAME");
         cardLayout.show(mainPanel, "GAME");
     }
 
-    // Keep old signature for backward compatibility (defaults to 3x3)
     public void showGameBoard(String mode, String difficulty, String player1, String player2) {
         showGameBoard(mode, difficulty, player1, player2, 3);
     }
@@ -60,7 +57,6 @@ public class ScreenManager {
     }
 
     public void showSettingsScreen() {
-        // Get current username
         String username = UserSession.getUsername();
         if (username == null) username = "Guest";
 

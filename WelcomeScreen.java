@@ -23,7 +23,7 @@ public class WelcomeScreen extends JPanel {
 
         JPanel contentPanel = new JPanel(new GridLayout(0, 1, 20, 20));
         contentPanel.setOpaque(false);
-        contentPanel.setPreferredSize(new Dimension(350, 400)); // Increased for Settings button
+        contentPanel.setPreferredSize(new Dimension(350, 400));
 
         // ==========================
         // BUTTONS

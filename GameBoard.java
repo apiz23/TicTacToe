@@ -1,16 +1,13 @@
 package tictactoe;
 
 import tictactoe.logic.GameLogic;
-// Depending on your package structure, you might need these imports:
-// import tictactoe.audio.MusicPlayer;
-// import tictactoe.ui.SettingsScreen;
+import tictactoe.logic.BotAI;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Properties;
-import java.util.Random;
 import javax.imageio.ImageIO;
 
 public class GameBoard extends JPanel {
@@ -38,7 +35,7 @@ public class GameBoard extends JPanel {
     private String player1Name;
     private String player2Name;
 
-    private int boardSize; // Dynamic board size
+    private int boardSize;
 
     // Colors
     private final Color BG_COLOR = new Color(240, 240, 245);
@@ -54,7 +51,6 @@ public class GameBoard extends JPanel {
         this.player2Name = mode.equals("Bot") ? "Bot" : player2;
         this.boardSize = boardSize;
 
-        // Initialize arrays based on board size
         this.cells = new JButton[boardSize * boardSize];
         this.logic = new GameLogic(boardSize);
 
@@ -65,11 +61,9 @@ public class GameBoard extends JPanel {
         add(createBoardPanel(), BorderLayout.CENTER);
         add(createBottomPanel(manager), BorderLayout.SOUTH);
 
-        // Initialize and start music
         initializeMusic();
 
         System.out.println("Started Game: " + mode + " (" + difficulty + ") - Board: " + boardSize + "x" + boardSize);
-        System.out.println("Player 1: " + player1Name + " | Player 2: " + player2Name);
     }
 
     /* ---------------------- TOP PANEL ---------------------- */
@@ -80,12 +74,9 @@ public class GameBoard extends JPanel {
         topPanel.setBackground(BG_COLOR);
         topPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
 
-        // Add music toggle button at top-right
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(BG_COLOR);
         headerPanel.add(createMusicToggleButton(), BorderLayout.EAST);
-
-        // Add padding to header so button isn't stuck to the edge
         headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
 
         topPanel.add(headerPanel);
@@ -154,9 +145,8 @@ public class GameBoard extends JPanel {
         JPanel wrapper = new JPanel(new GridBagLayout());
         wrapper.setBackground(BG_COLOR);
 
-        // Dynamic board size calculation
         int cellSize = calculateCellSize();
-        int boardPixelSize = cellSize * boardSize + (boardSize - 1) * 10; // 10px gap
+        int boardPixelSize = cellSize * boardSize + (boardSize - 1) * 10;
 
         JPanel boardPanel = new JPanel(new GridLayout(boardSize, boardSize, 10, 10));
         boardPanel.setBackground(BG_COLOR);
@@ -177,7 +167,6 @@ public class GameBoard extends JPanel {
     }
 
     private int calculateCellSize() {
-        // Adjust cell size based on board size
         switch (boardSize) {
             case 3: return 120;
             case 4: return 90;
@@ -189,11 +178,8 @@ public class GameBoard extends JPanel {
 
     private JButton createBoardCell(int cellSize) {
         JButton btn = new JButton("");
-
-        // Dynamic font size based on cell size
         int fontSize = cellSize - 20;
         btn.setFont(new Font("SansSerif", Font.BOLD, fontSize));
-
         btn.setBackground(Color.WHITE);
         btn.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220), 2));
         btn.setFocusPainted(false);
@@ -227,7 +213,6 @@ public class GameBoard extends JPanel {
 
         backBtn.addActionListener(e -> {
             resetBoard();
-            // Stop music when leaving game
             if (musicPlayer != null) {
                 musicPlayer.stopMusic();
             }
@@ -238,22 +223,17 @@ public class GameBoard extends JPanel {
         return bottomPanel;
     }
 
-    /* ----------------------------- MUSIC LOGIC ------------------------------ */
+    /* ----------------------------- MUSIC & UTILS ------------------------------ */
 
     private void initializeMusic() {
         try {
-            // Get music player instance
             musicPlayer = MusicPlayer.getInstance();
-
-            // Check if music is enabled in settings
             Properties settings = SettingsScreen.getSettings();
             boolean musicEnabled = Boolean.parseBoolean(settings.getProperty("musicEnabled", "true"));
 
             if (musicEnabled) {
-                // Start background music
                 musicPlayer.playMusic("src/tictactoe/audio/background.wav");
             } else {
-                // Music disabled, update button
                 if (musicToggleBtn != null) {
                     musicToggleBtn.setText("🔇");
                     musicToggleBtn.setBackground(new Color(200, 200, 200));
@@ -263,8 +243,6 @@ public class GameBoard extends JPanel {
             System.err.println("Error initializing music: " + e.getMessage());
         }
     }
-
-    /* ----------------------------- ICON LOADER ------------------------------ */
 
     private ImageIcon loadIcon(String path, int width, int height) {
         try {
@@ -301,16 +279,16 @@ public class GameBoard extends JPanel {
     }
 
     private void handleBotMove() {
-        int botIndex = -1;
-
-        if ("Easy".equals(difficulty)) {
-            botIndex = easyBot();
-        } else if ("Medium".equals(difficulty)) {
-            botIndex = mediumBot();
-        } else if ("Hard".equals(difficulty)) {
-            botIndex = hardBot();
+        // 1. Create a clean String representation of the board for the AI
+        String[] boardData = new String[cells.length];
+        for (int i = 0; i < cells.length; i++) {
+            boardData[i] = cells[i].getText();
         }
 
+        // 2. Ask BotAI for the move
+        int botIndex = BotAI.getMove(difficulty, boardData, boardSize, spotsTaken);
+
+        // 3. Apply the move
         if (botIndex != -1) {
             performMove(botIndex);
             checkGameOver(player2Name);
@@ -319,248 +297,6 @@ public class GameBoard extends JPanel {
             turnLabel.setText(player1Name + "'s Turn (" + nextSymbol + ")");
         }
     }
-
-    /* ---------------------- AI DIFFICULTY LEVELS ---------------------- */
-
-    private int easyBot() {
-        Random rand = new Random();
-        int botIndex;
-        if (spotsTaken >= boardSize * boardSize) return -1;
-
-        do {
-            botIndex = rand.nextInt(boardSize * boardSize);
-        } while (!cells[botIndex].getText().isEmpty());
-        return botIndex;
-    }
-
-    private int mediumBot() {
-        if (spotsTaken >= boardSize * boardSize) return -1;
-
-        String symbol = logic.isXTurn() ? "X" : "O";
-
-        // 1. Check if bot can win
-        for (int i = 0; i < boardSize * boardSize; i++) {
-            if (cells[i].getText().isEmpty()) {
-                cells[i].setText(symbol);
-                if (checkWinningMove()) {
-                    cells[i].setText("");
-                    return i;
-                }
-                cells[i].setText("");
-            }
-        }
-
-        // 2. Block player
-        String opponentSymbol = logic.isXTurn() ? "O" : "X";
-        for (int i = 0; i < boardSize * boardSize; i++) {
-            if (cells[i].getText().isEmpty()) {
-                cells[i].setText(opponentSymbol);
-                if (checkWinningMove()) {
-                    cells[i].setText("");
-                    return i;
-                }
-                cells[i].setText("");
-            }
-        }
-
-        return easyBot();
-    }
-
-    private int hardBot() {
-        if (spotsTaken >= boardSize * boardSize) return -1;
-
-        // For larger boards, use limited depth minimax
-        int maxDepth = (boardSize <= 3) ? 9 : 4;
-
-        int bestScore = Integer.MIN_VALUE;
-        int bestMove = -1;
-
-        String botSymbol = logic.isXTurn() ? "X" : "O";
-
-        for (int i = 0; i < boardSize * boardSize; i++) {
-            if (cells[i].getText().isEmpty()) {
-                cells[i].setText(botSymbol);
-                int score = minimax(false, botSymbol, 0, maxDepth);
-                cells[i].setText("");
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = i;
-                }
-            }
-        }
-
-        if (bestMove == -1) return easyBot();
-        return bestMove;
-    }
-
-    private int minimax(boolean isMaximizing, String botSymbol, int depth, int maxDepth) {
-        // Limit depth for larger boards
-        if (depth >= maxDepth) return 0;
-
-        String playerSymbol = botSymbol.equals("X") ? "O" : "X";
-
-        if (checkWinningMove()) {
-            String winner = getWinner();
-            if (winner.equals(botSymbol)) return 10 - depth;
-            else if (winner.equals(playerSymbol)) return depth - 10;
-        }
-
-        boolean boardFull = true;
-        for (int i = 0; i < boardSize * boardSize; i++) {
-            if (cells[i].getText().isEmpty()) {
-                boardFull = false;
-                break;
-            }
-        }
-        if (boardFull) return 0;
-
-        if (isMaximizing) {
-            int bestScore = Integer.MIN_VALUE;
-            for (int i = 0; i < boardSize * boardSize; i++) {
-                if (cells[i].getText().isEmpty()) {
-                    cells[i].setText(botSymbol);
-                    int score = minimax(false, botSymbol, depth + 1, maxDepth);
-                    cells[i].setText("");
-                    bestScore = Math.max(score, bestScore);
-                }
-            }
-            return bestScore;
-        } else {
-            int bestScore = Integer.MAX_VALUE;
-            for (int i = 0; i < boardSize * boardSize; i++) {
-                if (cells[i].getText().isEmpty()) {
-                    cells[i].setText(playerSymbol);
-                    int score = minimax(true, botSymbol, depth + 1, maxDepth);
-                    cells[i].setText("");
-                    bestScore = Math.min(score, bestScore);
-                }
-            }
-            return bestScore;
-        }
-    }
-
-    /* ---------------------- DYNAMIC WIN CHECKING ---------------------- */
-
-    private boolean checkWinningMove() {
-        // Check all rows
-        for (int row = 0; row < boardSize; row++) {
-            boolean rowWin = true;
-            String first = cells[row * boardSize].getText();
-            if (first.isEmpty()) continue;
-
-            for (int col = 1; col < boardSize; col++) {
-                if (!cells[row * boardSize + col].getText().equals(first)) {
-                    rowWin = false;
-                    break;
-                }
-            }
-            if (rowWin) return true;
-        }
-
-        // Check all columns
-        for (int col = 0; col < boardSize; col++) {
-            boolean colWin = true;
-            String first = cells[col].getText();
-            if (first.isEmpty()) continue;
-
-            for (int row = 1; row < boardSize; row++) {
-                if (!cells[row * boardSize + col].getText().equals(first)) {
-                    colWin = false;
-                    break;
-                }
-            }
-            if (colWin) return true;
-        }
-
-        // Check main diagonal (top-left to bottom-right)
-        boolean diagWin1 = true;
-        String first1 = cells[0].getText();
-        if (!first1.isEmpty()) {
-            for (int i = 1; i < boardSize; i++) {
-                if (!cells[i * boardSize + i].getText().equals(first1)) {
-                    diagWin1 = false;
-                    break;
-                }
-            }
-            if (diagWin1) return true;
-        }
-
-        // Check anti-diagonal (top-right to bottom-left)
-        boolean diagWin2 = true;
-        String first2 = cells[boardSize - 1].getText();
-        if (!first2.isEmpty()) {
-            for (int i = 1; i < boardSize; i++) {
-                if (!cells[i * boardSize + (boardSize - 1 - i)].getText().equals(first2)) {
-                    diagWin2 = false;
-                    break;
-                }
-            }
-            if (diagWin2) return true;
-        }
-
-        return false;
-    }
-
-    private String getWinner() {
-        // Check rows
-        for (int row = 0; row < boardSize; row++) {
-            String first = cells[row * boardSize].getText();
-            if (first.isEmpty()) continue;
-            boolean match = true;
-            for (int col = 1; col < boardSize; col++) {
-                if (!cells[row * boardSize + col].getText().equals(first)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) return first;
-        }
-
-        // Check columns
-        for (int col = 0; col < boardSize; col++) {
-            String first = cells[col].getText();
-            if (first.isEmpty()) continue;
-            boolean match = true;
-            for (int row = 1; row < boardSize; row++) {
-                if (!cells[row * boardSize + col].getText().equals(first)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) return first;
-        }
-
-        // Check main diagonal
-        String first1 = cells[0].getText();
-        if (!first1.isEmpty()) {
-            boolean match = true;
-            for (int i = 1; i < boardSize; i++) {
-                if (!cells[i * boardSize + i].getText().equals(first1)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) return first1;
-        }
-
-        // Check anti-diagonal
-        String first2 = cells[boardSize - 1].getText();
-        if (!first2.isEmpty()) {
-            boolean match = true;
-            for (int i = 1; i < boardSize; i++) {
-                if (!cells[i * boardSize + (boardSize - 1 - i)].getText().equals(first2)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) return first2;
-        }
-
-        return "";
-    }
-
-    /* ------------------------- MOVE & WIN CHECKING ------------------------- */
 
     private void performMove(int index) {
         if (!logic.makeMove(index)) return;
@@ -586,11 +322,12 @@ public class GameBoard extends JPanel {
                 if (gameMode.equals("PvP")) {
                     String hw = UserSession.getHardwareId();
                     if (player1Name != null && hw != null) {
-                        System.out.println("[PvP] Saving win for: " + player1Name);
-                        DbCon.saveScore(player1Name, hw, 1);
+                        // Threading fix
+                        new Thread(() -> {
+                            System.out.println("[PvP] Saving win for: " + player1Name);
+                            DbCon.saveScore(player1Name, hw, 1);
+                        }).start();
                     }
-                } else {
-                    System.out.println("[Bot Mode] No points awarded for: " + player1Name);
                 }
 
             } else {
@@ -601,11 +338,12 @@ public class GameBoard extends JPanel {
                 if (gameMode.equals("PvP") && !player2Name.equals("Guest")) {
                     String hw = UserSession.getHardwareId();
                     if (hw != null) {
-                        System.out.println("[PvP] Saving win for: " + player2Name);
-                        DbCon.saveScore(player2Name, hw, 1);
+                        // Threading fix applied here too
+                        new Thread(() -> {
+                            System.out.println("[PvP] Saving win for: " + player2Name);
+                            DbCon.saveScore(player2Name, hw, 1);
+                        }).start();
                     }
-                } else if (gameMode.equals("Bot")) {
-                    System.out.println("[Bot Mode] No points awarded for Bot");
                 }
             }
             resetBoard();

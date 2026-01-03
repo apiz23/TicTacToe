@@ -19,35 +19,37 @@ public class DbCon {
             .build();
 
     // =========================================================================
-    // 1. LOGIN / REGISTER (Check or Create User + Hardware combo)
+    // 1. LOGIN / REGISTER (UNIQUE NAME + SAME DEVICE ALLOWED)
     // =========================================================================
-    public static void loginOrRegister(String player, String hardwareId) {
+    public static boolean loginOrRegister(String player, String hardwareId) {
         try {
-            // Encode parameters for URL safety
             String encName = URLEncoder.encode(player, StandardCharsets.UTF_8);
-            String encHw = URLEncoder.encode(hardwareId, StandardCharsets.UTF_8);
+            String encHw   = URLEncoder.encode(hardwareId, StandardCharsets.UTF_8);
 
-            // Query: Check if row exists for this Name + Hardware ID
-            String queryUrl = BASE_URL + "?player=eq." + encName + "&hardware_id=eq." + encHw + "&select=score";
+            // 🔍 1. Check if player name exists (any device)
+            String checkNameUrl = BASE_URL + "?player=eq." + encName + "&select=hardware_id";
 
-            HttpRequest getRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(queryUrl))
+            HttpRequest checkNameReq = HttpRequest.newBuilder()
+                    .uri(URI.create(checkNameUrl))
                     .header("apikey", API_KEY)
                     .header("Authorization", "Bearer " + API_KEY)
                     .GET()
                     .build();
 
-            HttpResponse<String> response = client.send(getRequest, HttpResponse.BodyHandlers.ofString());
-            String body = response.body();
+            HttpResponse<String> nameResp =
+                    client.send(checkNameReq, HttpResponse.BodyHandlers.ofString());
 
-            // If response is empty array "[]", the user+hardware combo is new.
+            String body = nameResp.body();
+
+            // 🆕 Name does NOT exist → register new user
             if (body.equals("[]") || body.length() < 3) {
-                System.out.println("New User/Device detected. Registering...");
 
-                // Insert new row: Score = 0
-                String jsonBody = String.format("{\"player\": \"%s\", \"hardware_id\": \"%s\", \"score\": 0}", player, hardwareId);
+                String jsonBody = String.format(
+                        "{\"player\":\"%s\",\"hardware_id\":\"%s\",\"score\":0}",
+                        player, hardwareId
+                );
 
-                HttpRequest postRequest = HttpRequest.newBuilder()
+                HttpRequest insertReq = HttpRequest.newBuilder()
                         .uri(URI.create(BASE_URL))
                         .header("apikey", API_KEY)
                         .header("Authorization", "Bearer " + API_KEY)
@@ -56,13 +58,22 @@ public class DbCon {
                         .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                         .build();
 
-                client.send(postRequest, HttpResponse.BodyHandlers.ofString());
-            } else {
-                System.out.println("User exists. Login successful.");
+                client.send(insertReq, HttpResponse.BodyHandlers.ofString());
+                return true; // ✅ new user
             }
+
+            // 👤 Name exists → check hardware_id
+            if (body.contains(hardwareId)) {
+                // ✅ Same user, same device
+                return true;
+            }
+
+            // ❌ Same name, DIFFERENT device
+            return false;
 
         } catch (Exception e) {
             System.err.println("Login Error: " + e.getMessage());
+            return false;
         }
     }
 
@@ -146,7 +157,6 @@ public class DbCon {
             // Encode parameter for URL safety
             String encName = URLEncoder.encode(player, StandardCharsets.UTF_8);
 
-            // Query: Check if any row exists with this player name
             String queryUrl = BASE_URL + "?player=eq." + encName + "&select=player";
 
             HttpRequest getRequest = HttpRequest.newBuilder()
@@ -172,7 +182,6 @@ public class DbCon {
     // HELPER METHODS (JSON Parsing)
     // =========================================================================
 
-    // Extracts an integer value from JSON string by key
     private static int parseJsonInt(String json, String key) {
         try {
             String val = extractJsonValue(json, key);
@@ -182,7 +191,6 @@ public class DbCon {
         } catch (Exception e) { return -1; }
     }
 
-    // Parses JSON Array into Object[][] for JTable
     private static Object[][] parseJsonArray(String json) {
         if (json == null || !json.startsWith("[")) return new Object[0][0];
 
