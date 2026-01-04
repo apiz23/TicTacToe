@@ -7,7 +7,7 @@ public class Main {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Tic Tac Toe");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(500, 700);
+            frame.setSize(600, 720);
             frame.setLocationRelativeTo(null);
 
             ScreenManager manager = new ScreenManager(frame);
